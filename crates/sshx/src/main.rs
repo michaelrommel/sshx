@@ -12,11 +12,7 @@ use tracing::error;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// Address of the remote sshx server.
-    #[clap(
-        long,
-        default_value = "https://www.michaelrommel.com",
-        env = "SSHX_SERVER"
-    )]
+    #[clap(long, default_value = "https://michaelrommel.com", env = "SSHX_SERVER")]
     server: String,
 
     /// Local shell command to run in the terminal.

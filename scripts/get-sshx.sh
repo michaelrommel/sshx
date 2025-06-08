@@ -37,7 +37,7 @@ armv7l)
 	;;
 esac
 
-url="https://michaelrommel.com/releases/sshx/sshx-${arch}${suffix}.tar.gz"
+url="https://michaelrommel.com/releases/shell/sshx-${arch}${suffix}.tar.gz"
 
 if [ -z "$NO_COLOR" ]; then
 	ansi_reset="\033[0m"
@@ -72,9 +72,19 @@ if [ "$http_code" -lt 200 ] || [ "$http_code" -gt 299 ]; then
 	exit 1
 fi
 
+printf "\n${ansi_reset}${ansi_info}↯ Adding sshx binary to ${ansi_underline}%s${ansi_reset}\n" "$path"
+tar xf "$temp" -C "$path" || exit 1
+
 printf "\n${ansi_reset}${ansi_info}↯ Done! You can now run sshx.${ansi_reset}\n"
+
+cleanup() {
+	rm -f "$temp"
+	rm -f "$path/sshx"
+	rm -f "$path/._sshx"
+	rmdir "$path"
+}
+trap cleanup 2 15
 
 if [ -n "$will_run" ]; then
 	"$path/sshx"
-	rm -f "$path/sshx"
 fi

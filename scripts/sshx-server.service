@@ -1,0 +1,12 @@
+[Service]
+Type=simple
+User=blog
+Group=blog
+Environment="PATH=/home/blog/bin:/usr/local/bin:/usr/bin:/bin"
+PassEnvironment=PATH
+WorkingDirectory=/home/blog
+ExecStart=/home/blog/bin/sshx-server
+
+[Install]
+WantedBy=multi-user.target
+
