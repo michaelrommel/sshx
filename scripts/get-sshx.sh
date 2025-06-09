@@ -64,7 +64,7 @@ case $cmd in
 esac
 
 printf "${ansi_reset}${ansi_info}↯ Downloading sshx from ${ansi_underline}%s${ansi_reset}\n" "$url"
-http_code=$(curl "$url" -o "$temp" -w "%{http_code}")
+http_code=$(curl -sS "$url" -o "$temp" -w "%{http_code}")
 if [ "$http_code" -lt 200 ] || [ "$http_code" -gt 299 ]; then
 	printf "${ansi_error}Error: Request had status code ${http_code}.\n"
 	cat "$temp" 1>&2

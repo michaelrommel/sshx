@@ -50,10 +50,12 @@ mkdir -p dist
 
 for target in "${targets[@]}"; do
 	echo "compress: target/$target/release/sshx"
-	tar czf $temp -C target/$target/release sshx
+	tar cz --no-xattrs -f $temp -C target/$target/release sshx
 	cp $temp ./dist/sshx-$target.tar.gz
 
 	echo "compress: target/$target/release/sshx-server"
-	tar czf $temp -C target/$target/release sshx-server
+	tar cz --no-xattrs -f $temp -C target/$target/release sshx-server
 	cp $temp ./dist/sshx-server-$target.tar.gz
 done
+
+scp ./dist/sshx-[ax]* blog@crow-vpn:releases/shell/
