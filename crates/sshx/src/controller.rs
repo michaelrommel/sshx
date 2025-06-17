@@ -1,7 +1,8 @@
 //! Network gRPC client allowing server control of terminals.
 
 use std::collections::HashMap;
-use std::pin::pin;
+// use std::pin::pin;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use sshx_core::proto::{
@@ -12,9 +13,15 @@ use sshx_core::{rand_alphanumeric, Sid};
 use tokio::sync::mpsc;
 use tokio::task;
 use tokio::time::{self, Duration, Instant, MissedTickBehavior};
+use tokio_rustls::{rustls::ClientConfig, TlsConnector};
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
-use tonic::transport::Channel;
 use tracing::{debug, error, warn};
+
+use hyper_http_proxy::{Intercept, Proxy, ProxyConnector};
+use hyper_rustls::ConfigBuilderExt;
+
+use hyper_util::client::legacy::{connect::HttpConnector, Client};
+use hyper_util::rt::TokioExecutor;
 
 use crate::encrypt::Encrypt;
 use crate::runner::{Runner, ShellData};
@@ -22,8 +29,8 @@ use crate::runner::{Runner, ShellData};
 /// Interval for sending empty heartbeat messages to the server.
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
 
-/// Interval to automatically reestablish connections.
-const RECONNECT_INTERVAL: Duration = Duration::from_secs(60);
+// Interval to automatically reestablish connections.
+// const RECONNECT_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Handles a single session's communication with the remote server.
 pub struct Controller {
@@ -53,6 +60,9 @@ impl Controller {
         runner: Runner,
         enable_readers: bool,
     ) -> Result<Self> {
+        // default_provider()
+        //     .install_default()
+        //     .expect("Failed to install rustls crypto provider");
         debug!(%origin, "connecting to server");
         let encryption_key = rand_alphanumeric(14); // 83.3 bits of entropy
 
@@ -116,8 +126,42 @@ impl Controller {
     /// This is used on reconnection to the server, since some replicas may be
     /// gracefully shutting down, which means connected clients need to start a
     /// new TCP handshake.
-    async fn connect(origin: &str) -> Result<SshxServiceClient<Channel>, tonic::transport::Error> {
-        SshxServiceClient::connect(String::from(origin)).await
+    async fn connect(
+        origin: &str,
+    ) -> Result<
+        SshxServiceClient<
+            hyper_util::client::legacy::Client<ProxyConnector<HttpConnector>, tonic::body::Body>,
+        >,
+        std::io::Error,
+    > {
+        let connector = HttpConnector::new();
+        let proxy = {
+            let proxy_uri = "http://194.138.0.62:9400".parse().unwrap();
+
+            let mut proxy = Proxy::new(Intercept::All, proxy_uri);
+            proxy.force_connect();
+
+            let mut pconnect = ProxyConnector::from_proxy_unsecured(connector, proxy);
+
+            let config = ClientConfig::builder();
+            // let config = config.with_native_roots();
+            let config = config.with_webpki_roots();
+            let mut config = config.with_no_client_auth();
+            config.alpn_protocols = vec![b"h2".to_vec()];
+            let cfg = Arc::new(config);
+            let tls = TlsConnector::from(cfg);
+            pconnect.set_tls(Some(tls));
+
+            pconnect
+        };
+        let client = Client::builder(TokioExecutor::new())
+            .http2_only(true)
+            .build(proxy);
+
+        let destination = origin.parse().unwrap();
+        let c = SshxServiceClient::with_origin(client, destination);
+
+        Ok(c)
     }
 
     /// Returns the name of the session.

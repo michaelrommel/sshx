@@ -58,4 +58,4 @@ for target in "${targets[@]}"; do
 	cp $temp ./dist/sshx-server-$target.tar.gz
 done
 
-scp ./dist/sshx-[ax]* blog@crow-vpn:releases/shell/
+#scp ./dist/sshx-[ax]* blog@crow-vpn:releases/shell/
