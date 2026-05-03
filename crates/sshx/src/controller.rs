@@ -23,6 +23,8 @@ use hyper_rustls::ConfigBuilderExt;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
 use hyper_util::rt::TokioExecutor;
 
+use tonic::transport::Channel;
+
 use crate::encrypt::Encrypt;
 use crate::runner::{Runner, ShellData};
 
@@ -126,42 +128,45 @@ impl Controller {
     /// This is used on reconnection to the server, since some replicas may be
     /// gracefully shutting down, which means connected clients need to start a
     /// new TCP handshake.
-    async fn connect(
-        origin: &str,
-    ) -> Result<
-        SshxServiceClient<
-            hyper_util::client::legacy::Client<ProxyConnector<HttpConnector>, tonic::body::Body>,
-        >,
-        std::io::Error,
-    > {
-        let connector = HttpConnector::new();
-        let proxy = {
-            let proxy_uri = "http://194.138.0.62:9400".parse().unwrap();
+    // async fn connect(
+    //     origin: &str,
+    // ) -> Result<
+    //     SshxServiceClient<
+    //         hyper_util::client::legacy::Client<ProxyConnector<HttpConnector>, tonic::body::Body>,
+    //     >,
+    //     std::io::Error,
+    // > {
+    //     let connector = HttpConnector::new();
+    //     let proxy = {
+    //         let proxy_uri = "http://194.138.0.62:9400".parse().unwrap();
 
-            let mut proxy = Proxy::new(Intercept::All, proxy_uri);
-            proxy.force_connect();
+    //         let mut proxy = Proxy::new(Intercept::All, proxy_uri);
+    //         proxy.force_connect();
 
-            let mut pconnect = ProxyConnector::from_proxy_unsecured(connector, proxy);
+    //         let mut pconnect = ProxyConnector::from_proxy_unsecured(connector, proxy);
 
-            let config = ClientConfig::builder();
-            // let config = config.with_native_roots();
-            let config = config.with_webpki_roots();
-            let mut config = config.with_no_client_auth();
-            config.alpn_protocols = vec![b"h2".to_vec()];
-            let cfg = Arc::new(config);
-            let tls = TlsConnector::from(cfg);
-            pconnect.set_tls(Some(tls));
+    //         let config = ClientConfig::builder();
+    //         // let config = config.with_native_roots();
+    //         let config = config.with_webpki_roots();
+    //         let mut config = config.with_no_client_auth();
+    //         config.alpn_protocols = vec![b"h2".to_vec()];
+    //         let cfg = Arc::new(config);
+    //         let tls = TlsConnector::from(cfg);
+    //         pconnect.set_tls(Some(tls));
 
-            pconnect
-        };
-        let client = Client::builder(TokioExecutor::new())
-            .http2_only(true)
-            .build(proxy);
+    //         pconnect
+    //     };
+    //     let client = Client::builder(TokioExecutor::new())
+    //         .http2_only(true)
+    //         .build(proxy);
 
-        let destination = origin.parse().unwrap();
-        let c = SshxServiceClient::with_origin(client, destination);
+    //     let destination = origin.parse().unwrap();
+    //     let c = SshxServiceClient::with_origin(client, destination);
 
-        Ok(c)
+    //     Ok(c)
+    // }
+    async fn connect(origin: &str) -> Result<SshxServiceClient<Channel>, tonic::transport::Error> {
+        SshxServiceClient::connect(String::from(origin)).await
     }
 
     /// Returns the name of the session.
