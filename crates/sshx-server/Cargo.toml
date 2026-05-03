@@ -15,7 +15,7 @@ async-channel = "2.3.1"
 async-stream = "0.3.6"
 axum = { version = "0.8.4", features = ["http2", "ws"] }
 base64 = "0.22.1"
-bytes = { version = "1.10.1", features = ["serde"] }
+bytes = { version = "1.11.1", features = ["serde"] }
 ciborium = "0.2.2"
 clap.workspace = true
 dashmap = "6.1.0"
